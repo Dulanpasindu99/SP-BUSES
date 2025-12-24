@@ -655,7 +655,7 @@ export default function HomeScreen() {
                             Developed By ALDTAN | ©2025 SPGPS. All rights reserved.
                         </Text>
                     </ScrollView>
-                </View>
+                </Animated.View>
             )}
 
 
