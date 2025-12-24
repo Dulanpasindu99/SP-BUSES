@@ -40,12 +40,21 @@ export default function HomeScreen() {
     // Animation values
     const sheetHeight = useRef(new Animated.Value(0)).current; // 0 for minimized (default on Home), 1 for expanded
     const resultsSheetAnim = useRef(new Animated.Value(1)).current; // 1 for max, 0 for min
+    const complainAnim = useRef(new Animated.Value(0)).current; // For entry animation (0 to 1)
 
     useEffect(() => {
         if (activeTab === "Home") {
             toggleSheet(true); // Minimize on Home
         } else if (activeTab === "Search") {
             toggleSheet(false); // Expand on Search Route
+        } else if (activeTab === "Complain") {
+            complainAnim.setValue(0);
+            Animated.spring(complainAnim, {
+                toValue: 1,
+                friction: 8,
+                tension: 40,
+                useNativeDriver: true,
+            }).start();
         }
     }, [activeTab]);
 
@@ -549,7 +558,27 @@ export default function HomeScreen() {
 
             {/* Complain Screen View */}
             {!showResults && activeTab === "Complain" && (
-                <View style={[styles.bottomSheet, styles.complainSheet]}>
+                <Animated.View style={[
+                    styles.bottomSheet,
+                    styles.complainSheet,
+                    {
+                        transform: [
+                            {
+                                translateY: complainAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [100, 0],
+                                }),
+                            },
+                            {
+                                scale: complainAnim.interpolate({
+                                    inputRange: [0, 1],
+                                    outputRange: [0.95, 1],
+                                }),
+                            }
+                        ],
+                        opacity: complainAnim,
+                    }
+                ]}>
                     <View style={styles.handleContainerResults}>
                         <View style={styles.handleBarResults} />
                     </View>
