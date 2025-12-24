@@ -40,21 +40,12 @@ export default function HomeScreen() {
     // Animation values
     const sheetHeight = useRef(new Animated.Value(0)).current; // 0 for minimized (default on Home), 1 for expanded
     const resultsSheetAnim = useRef(new Animated.Value(1)).current; // 1 for max, 0 for min
-    const complainAnim = useRef(new Animated.Value(0)).current; // For entry animation (0 to 1)
 
     useEffect(() => {
         if (activeTab === "Home") {
             toggleSheet(true); // Minimize on Home
         } else if (activeTab === "Search") {
             toggleSheet(false); // Expand on Search Route
-        } else if (activeTab === "Complain") {
-            complainAnim.setValue(0);
-            Animated.spring(complainAnim, {
-                toValue: 1,
-                friction: 8,
-                tension: 40,
-                useNativeDriver: true,
-            }).start();
         }
     }, [activeTab]);
 
@@ -128,6 +119,7 @@ export default function HomeScreen() {
             useNativeDriver: false,
         }).start();
     };
+
 
     const panResponder = useRef(
         PanResponder.create({
@@ -558,26 +550,9 @@ export default function HomeScreen() {
 
             {/* Complain Screen View */}
             {!showResults && activeTab === "Complain" && (
-                <Animated.View style={[
+                <View style={[
                     styles.bottomSheet,
                     styles.complainSheet,
-                    {
-                        transform: [
-                            {
-                                translateY: complainAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [100, 0],
-                                }),
-                            },
-                            {
-                                scale: complainAnim.interpolate({
-                                    inputRange: [0, 1],
-                                    outputRange: [0.95, 1],
-                                }),
-                            }
-                        ],
-                        opacity: complainAnim,
-                    }
                 ]}>
                     <View style={styles.handleContainerResults}>
                         <View style={styles.handleBarResults} />
@@ -609,8 +584,6 @@ export default function HomeScreen() {
                             />
                         </View>
 
-
-
                         <View style={styles.formGroup}>
                             <Text style={styles.fieldLabel}>Complaint</Text>
                             <TextInput
@@ -637,7 +610,7 @@ export default function HomeScreen() {
                             <Text style={styles.attachmentSubtext}>Max total size 100 MB. Allowed: images or PDF.</Text>
                         </View>
 
-                        <TouchableOpacity style={styles.submitButton}>
+                        <TouchableOpacity style={styles.submitButtonLarge}>
                             <Text style={styles.submitButtonText}>Submit Complaint</Text>
                         </TouchableOpacity>
 
@@ -655,10 +628,8 @@ export default function HomeScreen() {
                             Developed By ALDTAN | ©2025 SPGPS. All rights reserved.
                         </Text>
                     </ScrollView>
-                </Animated.View>
+                </View>
             )}
-
-
         </View>
     );
 }
@@ -1371,7 +1342,7 @@ const styles = StyleSheet.create({
         color: "#999",
         marginTop: 6,
     },
-    submitButton: {
+    submitButtonLarge: {
         backgroundColor: "#C41E3A",
         height: 54,
         borderRadius: 27,
