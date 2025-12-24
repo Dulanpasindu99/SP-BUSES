@@ -11,6 +11,7 @@ export default ({ config }) => ({
   scheme: "sprpta",
   android: {
     ...config.android,
+    package: "com.aldtan.sprpta",
     softwareKeyboardLayoutMode: "pan", // Only shift view if keyboard covers input
     config: {
       ...config.android?.config,
@@ -19,6 +20,7 @@ export default ({ config }) => ({
   },
   ios: {
     ...config.ios,
+    bundleIdentifier: "com.aldtan.sprpta",
     config: {
       ...config.ios?.config,
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
