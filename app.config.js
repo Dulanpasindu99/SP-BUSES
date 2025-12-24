@@ -1,5 +1,11 @@
 export default ({ config }) => ({
   ...config,
+  extra: {
+    ...config.extra,
+    eas: {
+      projectId: "1de0c5af-3fec-4ef7-b293-ce0e1123e686",
+    },
+  },
   name: "SP RPTA UI",
   slug: "sp-rpta-ui",
   scheme: "sprpta",
