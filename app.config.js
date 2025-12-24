@@ -18,4 +18,13 @@ export default ({ config }) => ({
       googleMapsApiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY,
     },
   },
+  plugins: [
+    [
+      "expo-image-picker",
+      {
+        "photosPermission": "The app accesses your photos to let you attach images to complaints.",
+        "cameraPermission": "The app accesses your camera to let you take photos for complaints."
+      }
+    ]
+  ]
 });
