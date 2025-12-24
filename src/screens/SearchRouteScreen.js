@@ -6,11 +6,20 @@ import { MaterialIcons, MaterialCommunityIcons, Ionicons } from "@expo/vector-ic
 import { COLORS, scale } from "../constants/theme";
 
 export default function SearchRouteScreen({ navigation }) {
+    const [from, setFrom] = useState("Galle Central Bus Stand");
+    const [to, setTo] = useState("Baddegama");
+
+    const handleSwap = () => {
+        const temp = from;
+        setFrom(to);
+        setTo(temp);
+    };
+
     const onGoResults = () => {
         navigation.navigate("RouteResults", {
             routeNo: "370",
-            from: "Galle Central Bus Stand",
-            to: "Baddegama",
+            from: from,
+            to: to,
         });
     };
 
@@ -38,7 +47,7 @@ export default function SearchRouteScreen({ navigation }) {
                     <View style={{ flex: 1 }}>
                         <View style={srStyles.routeInput}>
                             <View style={srStyles.dotBlue} />
-                            <Text style={srStyles.routeText}>Your location</Text>
+                            <Text style={srStyles.routeText}>{from}</Text>
                         </View>
 
                         <View style={srStyles.midDots}>
@@ -46,14 +55,14 @@ export default function SearchRouteScreen({ navigation }) {
                         </View>
 
                         <TouchableOpacity style={srStyles.routeInput} onPress={onGoResults}>
-                            <MaterialIcons name="location-on" size={scale(18)} color="#C62828" />
-                            <Text style={srStyles.routeTextMuted}>Choose destination</Text>
+                            <MaterialIcons name="location-on" size={scale(18)} color="#b20a37" />
+                            <Text style={srStyles.routeText}>{to}</Text>
                             <View style={{ flex: 1 }} />
                             <Ionicons name="chevron-forward" size={scale(16)} color="#777" />
                         </TouchableOpacity>
                     </View>
 
-                    <TouchableOpacity style={srStyles.swapBtn}>
+                    <TouchableOpacity style={srStyles.swapBtn} onPress={handleSwap}>
                         <MaterialCommunityIcons name="swap-vertical" size={scale(22)} color={COLORS.text} />
                     </TouchableOpacity>
                 </View>

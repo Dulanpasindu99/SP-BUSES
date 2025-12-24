@@ -5,6 +5,7 @@ export default ({ config }) => ({
   scheme: "sprpta",
   android: {
     ...config.android,
+    softwareKeyboardLayoutMode: "pan", // Only shift view if keyboard covers input
     config: {
       ...config.android?.config,
       googleMaps: { apiKey: process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY },

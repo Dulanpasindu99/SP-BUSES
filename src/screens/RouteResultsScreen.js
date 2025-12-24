@@ -1,15 +1,105 @@
 import React, { useMemo, useRef, useState, useCallback, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, Platform, FlatList, LayoutAnimation } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, Platform, FlatList, LayoutAnimation, StatusBar } from "react-native";
 import MapView, { PROVIDER_GOOGLE, Marker, Polyline } from "react-native-maps";
-import { SafeAreaView } from "react-native-safe-area-context";
+import { useSafeAreaInsets } from "react-native-safe-area-context";
 import { Feather, MaterialIcons, MaterialCommunityIcons } from "@expo/vector-icons";
 import BottomSheet, { BottomSheetView } from "@gorhom/bottom-sheet";
 import { COLORS, scale, DIMENSIONS } from "../constants/theme";
 import ResultRow from "../components/ResultRow";
+import { ENDPOINTS } from "../constants/api";
 
 export default function RouteResultsScreen({ navigation, route }) {
-    const { height: H } = DIMENSIONS;
-    const { routeNo = "370", from = "Galle Central Bus Stand", to = "Baddegama" } = route?.params || {};
+    const { from: initialFrom, to: initialTo, routeNo: initialRouteId } = route.params || {};
+    const [from, setFrom] = useState(initialFrom);
+    const [to, setTo] = useState(initialTo);
+    const [routeId, setRouteId] = useState(initialRouteId);
+
+    // State for timetable data and loading status
+    const [timetableData, setTimetableData] = useState([]);
+    const [isLoading, setIsLoading] = useState(false);
+
+    const timeToMinutes = (timeStr) => {
+        if (!timeStr || timeStr.length !== 4) return 0;
+        const hours = parseInt(timeStr.substring(0, 2));
+        const minutes = parseInt(timeStr.substring(2));
+        return hours * 60 + minutes;
+    };
+
+    const fetchTimetable = async (id) => {
+        setIsLoading(true);
+        try {
+            const response = await fetch(ENDPOINTS.TIMETABLE(id));
+            const json = await response.json();
+            if (Array.isArray(json)) {
+                setTimetableData(json);
+            }
+        } catch (error) {
+            console.error("Error fetching timetable in screen:", error);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+
+    // State for live bus data
+    const [liveBusData, setLiveBusData] = useState([]);
+
+    // Poll for live locations
+    useEffect(() => {
+        let interval;
+        const fetchLiveLocations = async () => {
+            try {
+                const response = await fetch(ENDPOINTS.LIVE_DEVICES);
+                const json = await response.json();
+                if (Array.isArray(json)) {
+                    setLiveBusData(json);
+                }
+            } catch (error) {
+                console.error("Error fetching live locations in results:", error);
+            }
+        };
+
+        fetchLiveLocations();
+        interval = setInterval(fetchLiveLocations, 2000); // Poll every 2s
+        return () => clearInterval(interval);
+    }, []);
+
+    // Fetch timetable data when component mounts or routeId changes
+    useEffect(() => {
+        if (routeId) {
+            fetchTimetable(routeId);
+        }
+    }, [routeId]);
+
+    const handleToggleDirection = async () => {
+        const currentFrom = from;
+        const currentTo = to;
+        setFrom(currentTo);
+        setTo(currentFrom);
+
+        // If we have a route number/ID, we should ideally find the reverse one.
+        // For now, if routeId is numeric or a specific slug, we might need an API call.
+        // But the user implies 'Search 370', so let's try to find the reverse route via API.
+        try {
+            const response = await fetch(`${ENDPOINTS.ROUTES}?searchKey=${routeId}`);
+            const json = await response.json();
+            if (json.data && Array.isArray(json.data)) {
+                const reverseRoute = json.data.find(r =>
+                    r.start.name === currentTo &&
+                    r.end.name === currentFrom
+                );
+                if (reverseRoute) {
+                    setRouteId(reverseRoute.id);
+                } else {
+                    // Fallback: If no reverse match found, we just swap names locally 
+                    // and keep same ID (though results might be wrong if ID is direction-specific)
+                    fetchTimetable(routeId);
+                }
+            }
+        } catch (error) {
+            console.error("Error toggling on results screen:", error);
+            fetchTimetable(routeId);
+        }
+    };
 
     // Mock routes
     const mainRoute = [
@@ -47,7 +137,7 @@ export default function RouteResultsScreen({ navigation, route }) {
     const busCoord = mainRoute[busIndex];
 
     const sheetRef = useRef(null);
-    const snapPoints = useMemo(() => ["28%", "58%", "86%"], []);
+    const snapPoints = useMemo(() => [320], []); // Fixed height to show ~3 results (limit to appear 3 at once)
     const [expandedId, setExpandedId] = useState(null);
 
     const toggleExpand = (id) => {
@@ -55,61 +145,14 @@ export default function RouteResultsScreen({ navigation, route }) {
         setExpandedId((prev) => (prev === id ? null : id));
     };
 
+    const insets = useSafeAreaInsets();
+
     const onClose = useCallback(() => navigation.goBack(), [navigation]);
 
-    const results = [
-        {
-            id: "1",
-            plate: "ND-0671",
-            status: "Running",
-            start: "Galle 1:00 PM",
-            end: "Baddegama 1:50 PM",
-            duration: "0hr 50 min",
-            tagColor: "#1E88E5",
-            arrivesAt: "11:31",
-            delayMin: 21,
-            stops: [
-                { time: "1:00 PM", name: "Galle" },
-                { time: "1:30 PM", name: "Poddala" },
-                { time: "1:50 PM", name: "Baddegama" },
-            ],
-        },
-        {
-            id: "2",
-            plate: "Not Identified",
-            status: "Running",
-            start: "Galle 1:10 PM",
-            end: "Baddegama 2:00 PM",
-            duration: "0hr 50 min",
-            tagColor: "#7E57C2",
-            arrivesAt: "11:34",
-            delayMin: 12,
-            stops: [
-                { time: "1:10 PM", name: "Galle" },
-                { time: "1:40 PM", name: "Poddala" },
-                { time: "2:00 PM", name: "Baddegama" },
-            ],
-        },
-        {
-            id: "3",
-            plate: "ND-0672",
-            status: "Running",
-            start: "Galle 1:20 PM",
-            end: "Baddegama 2:10 PM",
-            duration: "0hr 50 min",
-            tagColor: "#1E88E5",
-            arrivesAt: "11:38",
-            delayMin: 6,
-            stops: [
-                { time: "1:20 PM", name: "Galle" },
-                { time: "1:50 PM", name: "Poddala" },
-                { time: "2:10 PM", name: "Baddegama" },
-            ],
-        },
-    ];
 
     return (
-        <SafeAreaView style={{ flex: 1, backgroundColor: "#000" }}>
+        <View style={{ flex: 1, backgroundColor: "#000" }}>
+            <StatusBar translucent backgroundColor="transparent" barStyle="dark-content" />
             <MapView
                 style={StyleSheet.absoluteFill}
                 provider={Platform.OS === "android" ? PROVIDER_GOOGLE : undefined}
@@ -141,7 +184,7 @@ export default function RouteResultsScreen({ navigation, route }) {
             </MapView>
 
             {/* Top from/to bar */}
-            <View style={resStyles.resultsTopBar}>
+            <View style={[resStyles.resultsTopBar, { top: insets.top + scale(10) }]}>
                 <View style={resStyles.resultsRow}>
                     <View style={resStyles.circleIcon} />
                     <Text style={resStyles.resultsText}>{from}</Text>
@@ -152,10 +195,10 @@ export default function RouteResultsScreen({ navigation, route }) {
                 </View>
                 <View style={resStyles.divider} />
                 <View style={resStyles.resultsRow}>
-                    <MaterialIcons name="location-on" size={scale(18)} color="#C62828" />
+                    <MaterialIcons name="location-on" size={scale(18)} color="#b20a37" />
                     <Text style={resStyles.resultsText}>{to}</Text>
                     <View style={{ flex: 1 }} />
-                    <TouchableOpacity>
+                    <TouchableOpacity onPress={handleToggleDirection}>
                         <MaterialCommunityIcons name="swap-vertical" size={scale(22)} color="#222" />
                     </TouchableOpacity>
                 </View>
@@ -179,7 +222,7 @@ export default function RouteResultsScreen({ navigation, route }) {
             <BottomSheet
                 ref={sheetRef}
                 snapPoints={snapPoints}
-                index={1}
+                index={0} // Only one snap point now
                 enablePanDownToClose={false}
                 backgroundStyle={{ backgroundColor: "rgba(255,255,255,0.98)" }}
                 handleIndicatorStyle={{ width: scale(60) }}
@@ -205,40 +248,87 @@ export default function RouteResultsScreen({ navigation, route }) {
                         </View>
                     </View>
 
-                    <FlatList
-                        data={results}
-                        keyExtractor={(i) => i.id}
-                        ItemSeparatorComponent={() => <View style={resStyles.listSep} />}
-                        renderItem={({ item }) => (
-                            <ResultRow
-                                item={item}
-                                expanded={expandedId === item.id}
-                                onToggle={() => toggleExpand(item.id)}
-                            />
-                        )}
-                        ListFooterComponent={
-                            <>
-                                <View style={{ height: scale(12) }} />
-                                <View style={styles.noticeBanner}>
-                                    <Text style={styles.noticeText}>
-                                        The Launching ceremony will be held on 05th January 2026
-                                    </Text>
-                                    <Text style={styles.noticeSub}>NOTICE FROM SPRPTA</Text>
-                                </View>
-                                <Text style={styles.footerText}>
-                                    Developed By ALDTAN | ©2025 SPGPS. All rights reserved.
-                                </Text>
-                                <View style={{ height: scale(22) }} />
-                            </>
-                        }
-                    />
+                    {isLoading ? (
+                        <View style={{ padding: 20, alignItems: 'center' }}>
+                            <Text style={{ color: '#666' }}>Fetching Schedules...</Text>
+                        </View>
+                    ) : (
+                        (() => {
+                            // Filter logic: Strictly future buses (or current minute)
+                            const now = new Date();
+                            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+                            // Sort by time
+                            const activeBuses = timetableData.filter(item => {
+                                const startMinutes = timeToMinutes(item.loadingStartingTime);
+                                return startMinutes >= currentMinutes;
+                            });
+
+                            if (activeBuses.length === 0) {
+                                return (
+                                    <View style={{ padding: 20, alignItems: 'center' }}>
+                                        <Text style={{ color: '#666' }}>No more upcoming buses for today.</Text>
+                                    </View>
+                                );
+                            }
+
+                            const sortedBuses = [...activeBuses].sort((a, b) =>
+                                timeToMinutes(a.loadingStartingTime) - timeToMinutes(b.loadingStartingTime)
+                            );
+
+                            const mostRecentIndex = sortedBuses.findIndex(item =>
+                                timeToMinutes(item.loadingStartingTime) >= currentMinutes
+                            );
+
+                            return (
+                                <FlatList
+                                    data={sortedBuses}
+                                    keyExtractor={(i) => i.id.toString()}
+                                    ItemSeparatorComponent={() => <View style={resStyles.listSep} />}
+                                    renderItem={({ item, index }) => {
+                                        // Find matching live device
+                                        const liveInfo = liveBusData.find(d =>
+                                            (d.id === item.deviceId) ||
+                                            (d.busTurnId === item.id) ||
+                                            (d.runningSlotId === item.runningSlotId)
+                                        );
+
+                                        return (
+                                            <ResultRow
+                                                item={item}
+                                                liveInfo={liveInfo}
+                                                expanded={expandedId === item.id}
+                                                onToggle={() => toggleExpand(item.id)}
+                                                isHighlighted={index === mostRecentIndex}
+                                            />
+                                        );
+                                    }}
+                                    ListFooterComponent={
+                                        <>
+                                            <View style={{ height: scale(12) }} />
+                                            <View style={srStyles.noticeBanner}>
+                                                <Text style={srStyles.noticeText}>
+                                                    The Launching ceremony will be held on 05th January 2026
+                                                </Text>
+                                                <Text style={srStyles.noticeSub}>NOTICE FROM SPRPTA</Text>
+                                            </View>
+                                            <Text style={srStyles.footerText}>
+                                                Developed By ALDTAN | ©2025 SPGPS. All rights reserved.
+                                            </Text>
+                                            <View style={{ height: scale(22) }} />
+                                        </>
+                                    }
+                                />
+                            );
+                        })()
+                    )}
                 </BottomSheetView>
             </BottomSheet>
-        </SafeAreaView>
+        </View>
     );
 }
 
-const styles = StyleSheet.create({
+const srStyles = StyleSheet.create({
     noticeBanner: {
         marginTop: scale(12),
         backgroundColor: COLORS.lightPink2,

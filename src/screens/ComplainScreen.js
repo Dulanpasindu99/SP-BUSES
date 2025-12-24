@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, Alert, ActivityIndicator, Keyboard } from "react-native";
+import { View, Text, StyleSheet, TouchableOpacity, TextInput, Platform, Alert, ActivityIndicator, Keyboard, KeyboardAvoidingView, ScrollView } from "react-native";
 import MapView, { PROVIDER_GOOGLE } from "react-native-maps";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Feather } from "@expo/vector-icons";
@@ -8,11 +8,12 @@ import * as ImagePicker from "expo-image-picker";
 import * as DocumentPicker from "expo-document-picker";
 import * as Linking from "expo-linking";
 import { COLORS, scale } from "../constants/theme";
+import { ENDPOINTS } from "../constants/api";
 
 export default function ComplainScreen({ navigation }) {
     // Replace with your real backend
-    const BUS_SEARCH_URL = "https://YOUR_BACKEND_DOMAIN/api/buses/search?q=";
-    const COMPLAINT_UPLOAD_URL = "https://YOUR_BACKEND_DOMAIN/api/complaints";
+    const BUS_SEARCH_URL = `${ENDPOINTS.BUS_SEARCH}?q=`;
+
 
     const [busNumber, setBusNumber] = useState("");
     const [complaint, setComplaint] = useState("");
@@ -24,8 +25,7 @@ export default function ComplainScreen({ navigation }) {
     const [attachments, setAttachments] = useState([]);
     const MAX_TOTAL_BYTES = 120 * 1024 * 1024;
 
-    const [isUploading, setIsUploading] = useState(false);
-    const [uploadProgress, setUploadProgress] = useState(0);
+
 
     const bytesToMB = (b) => (b / (1024 * 1024)).toFixed(2);
     const getTotalSize = (list) => list.reduce((sum, f) => sum + (f.size || 0), 0);
@@ -191,57 +191,8 @@ export default function ComplainScreen({ navigation }) {
     };
 
     const onSubmit = () => {
-        const bn = busNumber.trim();
-        const cp = complaint.trim();
-        if (!bn) return Alert.alert("Missing bus number", "Please enter the bus number.");
-        if (!cp) return Alert.alert("Missing complaint", "Please write your complaint.");
-
-        const total = getTotalSize(attachments);
-        if (total > MAX_TOTAL_BYTES) return Alert.alert("Size limit", "Total attachments must be 120 MB or less.");
-
-        const form = new FormData();
-        form.append("busNumber", bn);
-        form.append("complaint", cp);
-
-        attachments.forEach((f, idx) => {
-            form.append("attachments", {
-                uri: f.uri,
-                name: f.name || `file_${idx}`,
-                type: f.mimeType || guessMimeFromName(f.name),
-            });
-        });
-
-        setIsUploading(true);
-        setUploadProgress(0);
-
-        const xhr = new XMLHttpRequest();
-        xhr.open("POST", COMPLAINT_UPLOAD_URL);
-
-        xhr.upload.onprogress = (e) => {
-            if (!e.lengthComputable) return;
-            setUploadProgress(Math.min(1, Math.max(0, e.loaded / e.total)));
-        };
-
-        xhr.onload = () => {
-            setIsUploading(false);
-            setUploadProgress(0);
-            if (xhr.status >= 200 && xhr.status < 300) {
-                Alert.alert("Success", "Complaint submitted successfully.");
-                setBusNumber("");
-                setComplaint("");
-                setAttachments([]);
-            } else {
-                Alert.alert("Upload failed", `Server responded with ${xhr.status}.`);
-            }
-        };
-
-        xhr.onerror = () => {
-            setIsUploading(false);
-            setUploadProgress(0);
-            Alert.alert("Upload failed", "Network error. Please try again.");
-        };
-
-        xhr.send(form);
+        Alert.alert("Coming Soon", "This feature will be available shortly.");
+        // API integration temporarily disabled
     };
 
     const totalBytes = getTotalSize(attachments);
@@ -259,193 +210,139 @@ export default function ComplainScreen({ navigation }) {
                 }}
             />
 
-            {isUploading && (
-                <View style={cStyles.uploadOverlay}>
-                    <View style={cStyles.uploadCard}>
-                        <Text style={cStyles.uploadTitle}>Uploading...</Text>
-                        <View style={cStyles.progressTrack}>
-                            <View style={[cStyles.progressFill, { width: `${Math.round(uploadProgress * 100)}%` }]} />
-                        </View>
-                        <Text style={cStyles.uploadPct}>{Math.round(uploadProgress * 100)}%</Text>
-                        <ActivityIndicator style={{ marginTop: scale(10) }} />
-                    </View>
-                </View>
-            )}
+
 
             <View style={cStyles.panel}>
-                <View style={cStyles.handlePill} />
+                <KeyboardAvoidingView
+                    behavior={Platform.OS === "ios" ? "padding" : "height"}
+                    style={{ flex: 1 }}
+                    keyboardVerticalOffset={scale(20)}
+                >
+                    <ScrollView
+                        keyboardShouldPersistTaps="handled"
+                        showsVerticalScrollIndicator={false}
+                        contentContainerStyle={{ flexGrow: 1 }}
+                    >
+                        <View style={cStyles.handlePill} />
 
-                {/* X -> Home */}
-                <TouchableOpacity style={cStyles.closeBtn} onPress={() => navigation.navigate("Home")}>
-                    <Feather name="x" size={scale(18)} color="#111" />
-                </TouchableOpacity>
+                        {/* X -> Home */}
+                        <TouchableOpacity style={cStyles.closeBtn} onPress={() => navigation.navigate("Home")}>
+                            <Feather name="x" size={scale(18)} color="#111" />
+                        </TouchableOpacity>
 
-                <View style={cStyles.header}>
-                    <View style={cStyles.brandRow}>
-                        <View style={cStyles.spBadge}>
-                            <Text style={cStyles.spBadgeText}>SP</Text>
-                        </View>
-                        <Text style={cStyles.brandText}>RPTA</Text>
-                    </View>
+                        <View style={cStyles.header}>
+                            <View style={cStyles.brandRow}>
+                                <View style={cStyles.spBadge}>
+                                    <Text style={cStyles.spBadgeText}>SP</Text>
+                                </View>
+                                <Text style={cStyles.brandText}>RPTA</Text>
+                            </View>
 
-                    <Text style={cStyles.title}>ADD A COMPLAINT</Text>
-                    <Text style={cStyles.subtitle}>
-                        Add your complaints about the buses{"\n"}
-                        operated by Southern Provincial{"\n"}
-                        Road Passenger Transport Authority
-                    </Text>
-                </View>
-
-                <View style={{ marginTop: scale(10) }}>
-                    <Text style={cStyles.label}>Bus Number</Text>
-
-                    <View style={cStyles.inputWrap}>
-                        <TextInput
-                            value={busNumber}
-                            onChangeText={(t) => {
-                                setBusNumber(t);
-                                setShowSuggest(true);
-                            }}
-                            placeholder="Type bus number to search"
-                            placeholderTextColor="#9B9B9B"
-                            style={cStyles.input}
-                            onFocus={() => busNumber.trim().length >= 2 && setShowSuggest(true)}
-                        />
-                        {loadingSuggest && <ActivityIndicator style={{ position: "absolute", right: scale(12) }} />}
-                    </View>
-
-                    {showSuggest && suggestions.length > 0 && (
-                        <View style={cStyles.suggestBox}>
-                            {suggestions.map((s) => (
-                                <TouchableOpacity key={s.key} style={cStyles.suggestItem} onPress={() => selectSuggestion(s.value)}>
-                                    <Text style={cStyles.suggestText}>{s.label}</Text>
-                                </TouchableOpacity>
-                            ))}
-                        </View>
-                    )}
-
-                    <View style={cStyles.infoBox}>
-                        <View style={cStyles.infoIcon}>
-                            <Feather name="info" size={scale(18)} color="#111" />
-                        </View>
-                        <View style={{ flex: 1 }}>
-                            <Text style={cStyles.infoTitle}>Heads up!</Text>
-                            <Text style={cStyles.infoText}>
-                                Write a descriptive complaint including all{"\n"}relevant details.
+                            <Text style={cStyles.title}>ADD A COMPLAINT</Text>
+                            <Text style={cStyles.subtitle}>
+                                Add your complaints about the buses{"\n"}
+                                operated by Southern Provincial{"\n"}
+                                Road Passenger Transport Authority
                             </Text>
                         </View>
-                    </View>
 
-                    <Text style={[cStyles.label, { marginTop: scale(14) }]}>Complaint</Text>
-                    <View style={[cStyles.inputWrap, { height: scale(86), borderRadius: scale(14) }]}>
-                        <TextInput
-                            value={complaint}
-                            onChangeText={setComplaint}
-                            placeholder="Write your complaint here"
-                            placeholderTextColor="#9B9B9B"
-                            style={[cStyles.input, { height: "100%", textAlignVertical: "top" }]}
-                            multiline
-                        />
-                    </View>
-
-                    <Text style={[cStyles.label, { marginTop: scale(14) }]}>
-                        Attachments (JPG/PNG/PDF/Video, total ≤ 120 MB)
-                    </Text>
-
-                    <TouchableOpacity style={cStyles.fileRow} onPress={openPicker} activeOpacity={0.9}>
-                        <View style={cStyles.fileBtn}>
-                            <Text style={cStyles.fileBtnText}>Choose Files</Text>
-                        </View>
-
-                        <Text style={cStyles.fileName}>
-                            {attachments.length === 0 ? "no files selected" : `${attachments.length} file(s) selected`}
-                        </Text>
-
-                        <View style={{ flex: 1 }} />
-                        <Text style={cStyles.sizeText}>{bytesToMB(totalBytes)} MB</Text>
-                    </TouchableOpacity>
-
-                    {attachments.length > 0 && (
                         <View style={{ marginTop: scale(10) }}>
-                            {attachments.slice(0, 4).map((f) => (
-                                <View key={f.uri} style={cStyles.fileItem}>
-                                    <Text style={cStyles.fileItemText} numberOfLines={1}>
-                                        {f.name} • {bytesToMB(f.size || 0)} MB
-                                    </Text>
-                                    <TouchableOpacity onPress={() => removeAttachment(f.uri)}>
-                                        <Feather name="x" size={scale(16)} color="#111" />
-                                    </TouchableOpacity>
+                            <Text style={cStyles.label}>Bus Number</Text>
+
+                            <View style={cStyles.inputWrap}>
+                                <TextInput
+                                    value={busNumber}
+                                    onChangeText={(t) => {
+                                        setBusNumber(t);
+                                        setShowSuggest(true);
+                                    }}
+                                    placeholder="Type bus number to search"
+                                    placeholderTextColor="#9B9B9B"
+                                    style={cStyles.input}
+                                    onFocus={() => busNumber.trim().length >= 2 && setShowSuggest(true)}
+                                />
+                                {loadingSuggest && <ActivityIndicator style={{ position: "absolute", right: scale(12) }} />}
+                            </View>
+
+                            {showSuggest && suggestions.length > 0 && (
+                                <View style={cStyles.suggestBox}>
+                                    {suggestions.map((s) => (
+                                        <TouchableOpacity key={s.key} style={cStyles.suggestItem} onPress={() => selectSuggestion(s.value)}>
+                                            <Text style={cStyles.suggestText}>{s.label}</Text>
+                                        </TouchableOpacity>
+                                    ))}
                                 </View>
-                            ))}
-                            {attachments.length > 4 && <Text style={cStyles.moreText}>+ {attachments.length - 4} more</Text>}
+                            )}
+
+                            <View style={cStyles.infoBox}>
+                                <View style={cStyles.infoIcon}>
+                                    <Feather name="info" size={scale(18)} color="#111" />
+                                </View>
+                                <View style={{ flex: 1 }}>
+                                    <Text style={cStyles.infoTitle}>Heads up!</Text>
+                                    <Text style={cStyles.infoText}>
+                                        Write a descriptive complaint including all{"\n"}relevant details.
+                                    </Text>
+                                </View>
+                            </View>
+
+                            <Text style={[cStyles.label, { marginTop: scale(14) }]}>Complaint</Text>
+                            <View style={[cStyles.inputWrap, { height: scale(86), borderRadius: scale(14) }]}>
+                                <TextInput
+                                    value={complaint}
+                                    onChangeText={setComplaint}
+                                    placeholder="Write your complaint here"
+                                    placeholderTextColor="#9B9B9B"
+                                    style={[cStyles.input, { height: "100%", textAlignVertical: "top" }]}
+                                    multiline
+                                />
+                            </View>
+
+                            <Text style={[cStyles.label, { marginTop: scale(14) }]}>
+                                Attachments (JPG/PNG/PDF/Video, total ≤ 120 MB)
+                            </Text>
+
+                            <TouchableOpacity style={cStyles.fileRow} onPress={openPicker} activeOpacity={0.9}>
+                                <View style={cStyles.fileBtn}>
+                                    <Text style={cStyles.fileBtnText}>Choose Files</Text>
+                                </View>
+
+                                <Text style={cStyles.fileName}>
+                                    {attachments.length === 0 ? "no files selected" : `${attachments.length} file(s) selected`}
+                                </Text>
+
+                                <View style={{ flex: 1 }} />
+                                <Text style={cStyles.sizeText}>{bytesToMB(totalBytes)} MB</Text>
+                            </TouchableOpacity>
+
+                            {attachments.length > 0 && (
+                                <View style={{ marginTop: scale(10) }}>
+                                    {attachments.slice(0, 4).map((f) => (
+                                        <View key={f.uri} style={cStyles.fileItem}>
+                                            <Text style={cStyles.fileItemText} numberOfLines={1}>
+                                                {f.name} • {bytesToMB(f.size || 0)} MB
+                                            </Text>
+                                            <TouchableOpacity onPress={() => removeAttachment(f.uri)}>
+                                                <Feather name="x" size={scale(16)} color="#111" />
+                                            </TouchableOpacity>
+                                        </View>
+                                    ))}
+                                    {attachments.length > 4 && <Text style={cStyles.moreText}>+ {attachments.length - 4} more</Text>}
+                                </View>
+                            )}
+
+                            <Text style={cStyles.helperText}>Total attachments must be 120 MB or less.</Text>
+
+                            <TouchableOpacity style={[cStyles.submitBtn, { backgroundColor: "#ccc" }]} activeOpacity={1} disabled={true}>
+                                <Text style={cStyles.submitText}>Submit Complaint</Text>
+                            </TouchableOpacity>
                         </View>
-                    )}
-
-                    <Text style={cStyles.helperText}>Total attachments must be 120 MB or less.</Text>
-
-                    <TouchableOpacity style={cStyles.submitBtn} onPress={onSubmit} activeOpacity={0.92} disabled={isUploading}>
-                        <Text style={cStyles.submitText}>Submit Complaint</Text>
-                    </TouchableOpacity>
-
-                    <Text style={cStyles.termsText}>
-                        By clicking continue, you agree to our{" "}
-                        <Text style={cStyles.linkText} onPress={() => Linking.openURL("https://YOUR_DOMAIN/terms")}>
-                            Terms of Service
-                        </Text>{" "}
-                        and{" "}
-                        <Text style={cStyles.linkText} onPress={() => Linking.openURL("https://YOUR_DOMAIN/privacy")}>
-                            Privacy Policy
-                        </Text>
-                        . Developed by <Text style={cStyles.linkText}>Aldtan</Text>.
-                    </Text>
-
-                    <View style={[styles.noticeBanner, { marginTop: scale(12) }]}>
-                        <Text style={styles.noticeText}>
-                            The Launching ceremony will be held on 05th January 2026
-                        </Text>
-                        <Text style={styles.noticeSub}>NOTICE FROM SPRPTA</Text>
-                    </View>
-
-                    <Text style={styles.footerText}>
-                        Developed By ALDTAN | ©2025 SPGPS. All rights reserved.
-                    </Text>
-                </View>
+                    </ScrollView>
+                </KeyboardAvoidingView>
             </View>
         </SafeAreaView>
     );
 }
-
-const styles = StyleSheet.create({
-    noticeBanner: {
-        marginTop: scale(12),
-        backgroundColor: COLORS.lightPink2,
-        borderRadius: scale(16),
-        paddingVertical: scale(14),
-        paddingHorizontal: scale(14),
-        alignItems: "center",
-    },
-    noticeText: {
-        textAlign: "center",
-        fontSize: scale(13),
-        color: "#444",
-        fontWeight: "600",
-        lineHeight: scale(18),
-    },
-    noticeSub: {
-        marginTop: scale(6),
-        fontSize: scale(10),
-        color: "#555",
-        fontWeight: "800",
-        letterSpacing: 0.4,
-    },
-    footerText: {
-        marginTop: scale(10),
-        textAlign: "center",
-        fontSize: scale(10.5),
-        color: "#666",
-        fontWeight: "600",
-    },
-});
 
 const cStyles = StyleSheet.create({
     panel: {
@@ -515,8 +412,6 @@ const cStyles = StyleSheet.create({
     submitBtn: { marginTop: scale(16), backgroundColor: COLORS.maroon, borderRadius: scale(999), height: scale(54), alignItems: "center", justifyContent: "center", shadowColor: "#000", shadowOpacity: 0.16, shadowRadius: 12, elevation: 8 },
     submitText: { color: "#fff", fontWeight: "900", fontSize: scale(18) },
 
-    termsText: { marginTop: scale(10), textAlign: "center", color: "#666", fontWeight: "800", fontSize: scale(11.5), lineHeight: scale(16) },
-    linkText: { textDecorationLine: "underline", color: "#444", fontWeight: "900" },
 
     uploadOverlay: { position: "absolute", top: 0, left: 0, right: 0, bottom: 0, backgroundColor: "rgba(0,0,0,0.35)", zIndex: 999, alignItems: "center", justifyContent: "center" },
     uploadCard: { width: "86%", backgroundColor: "white", borderRadius: scale(18), padding: scale(16) },
