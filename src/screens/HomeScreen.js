@@ -16,6 +16,7 @@ import {
     KeyboardAvoidingView,
     ActivityIndicator,
     Alert,
+    BackHandler,
 } from "react-native";
 import { useRef } from "react";
 import MapView, { PROVIDER_GOOGLE, Polyline, Marker } from "react-native-maps";
@@ -90,6 +91,43 @@ export default function HomeScreen() {
             }).start();
         }
     }, [activeTab]);
+
+    // Handle Android Hardware Back Button
+    useEffect(() => {
+        const backAction = () => {
+            // 1. If a specific bus is selected in the carousel (detailed view), close it
+            if (selectedResult) {
+                setSelectedResult(null);
+                return true;
+            }
+
+            // 2. If list of search results is showing, go back to top search input mode
+            if (showResults) {
+                setShowResults(false);
+                setSelectedRouteData(null); // Clear route data to clear map lines
+                setRoutePath([]);
+                setRouteStops([]);
+                setTopSearchQuery(""); // Optional: clear query
+                return true;
+            }
+
+            // 3. If on a tab other than Home (e.g., Search, Complain), go back to Home
+            if (activeTab !== "Home") {
+                setActiveTab("Home");
+                return true;
+            }
+
+            // 4. Default behavior (exit app) if on Home with no overlays
+            return false;
+        };
+
+        const backHandler = BackHandler.addEventListener(
+            "hardwareBackPress",
+            backAction
+        );
+
+        return () => backHandler.remove();
+    }, [selectedResult, showResults, activeTab]);
 
     useEffect(() => {
         const keyboardDidShowListener = Keyboard.addListener(
